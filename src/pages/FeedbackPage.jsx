@@ -24,7 +24,7 @@ export default function FeedbackPage() {
     <section className="feedback-layout fade-in">
       <div className="panel-card">
         <div className="section-header">
-          <h2>Practice Feedback</h2>
+          <h2>{attempt.estimatedPitchFeedbackLabel || 'Estimated Pitch Feedback'}</h2>
           <p>
             {attempt.exerciseName} • {attempt.rhythmPattern} • {attempt.noAudioDetected ? 'No Clear Audio' : 'Mic Mode'}
           </p>
@@ -58,18 +58,30 @@ export default function FeedbackPage() {
           </div>
         ) : null}
 
+        {!attempt.noAudioDetected && attempt.audioDetected && (!attempt.noteResults || attempt.noteResults.length === 0) ? (
+          <div className="feedback-alert feedback-alert-soft">
+            <h3>Audio was detected, but pitch was unclear</h3>
+            <p>Try playing one note at a time closer to the microphone.</p>
+          </div>
+        ) : null}
+
         {!attempt.noAudioDetected ? (
           <div className="metric-grid">
-          <article className="metric-card">
-            <h3>Pitch Accuracy</h3>
-            <strong>{attempt.pitchAccuracy}%</strong>
-            <p>{attempt.pitchAssessment === 'uncertain' ? 'Some notes were heard, but not all with high confidence.' : 'Based on detected note matches.'}</p>
-          </article>
-          <article className="metric-card">
-            <h3>Rhythm Accuracy</h3>
-            <strong>{attempt.rhythmAccuracy ?? '—'}{attempt.rhythmAccuracy !== null ? '%' : ''}</strong>
-            <p>{attempt.rhythmAssessment?.message || 'Rhythm was not confident enough to score.'}</p>
-          </article>
+            <article className="metric-card">
+              <h3>Pitch Accuracy</h3>
+              <strong>{attempt.pitchAccuracy ?? '—'}{attempt.pitchAccuracy !== null ? '%' : ''}</strong>
+              <p>
+                {attempt.pitchConfidenceLabel || 'Low confidence'}
+                {attempt.pitchAssessment === 'low'
+                  ? ' - The pitch estimate was uncertain and should be treated carefully.'
+                  : ' - Based on detected note matches.'}
+              </p>
+            </article>
+            <article className="metric-card">
+              <h3>Rhythm Accuracy</h3>
+              <strong>{attempt.rhythmAccuracy ?? '—'}{attempt.rhythmAccuracy !== null ? '%' : ''}</strong>
+              <p>{attempt.rhythmAssessment?.message || 'Rhythm was not confident enough to score.'}</p>
+            </article>
           </div>
         ) : null}
 
@@ -84,16 +96,23 @@ export default function FeedbackPage() {
                 <strong>{Math.round((attempt.averageVolume || 0) * 100)}%</strong>
               </div>
               <div>
-                <span>Detected Notes</span>
-                <strong>{attempt.detectedNotes?.length || 0}</strong>
+                <span>Pitch Confidence</span>
+                <strong>{attempt.pitchConfidenceLabel || 'Low confidence'}</strong>
               </div>
             </div>
-            <div className="chip-row">
-              {attempt.detectedNotes?.length ? (
-                attempt.detectedNotes.map((note, index) => (
-                  <span key={`${note}-${index}`} className="note-chip note-chip-live">
-                    {note}
-                  </span>
+            <div className="note-event-table">
+              {attempt.noteEvents?.length ? (
+                attempt.noteEvents.map((event, index) => (
+                  <article key={`${event.pitchClass || event.noteName}-${index}`} className="note-event-row">
+                    <div>
+                      <strong>{event.pitchClass || event.noteName}</strong>
+                      <span>{event.timestampLabel || '—'}</span>
+                    </div>
+                    <div>
+                      <span>{Math.round(event.frequency || 0)} Hz</span>
+                      <span>{Math.round(event.durationMs || 0)} ms</span>
+                    </div>
+                  </article>
                 ))
               ) : (
                 <span className="muted-text">No final pitch segments were stored.</span>

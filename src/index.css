@@ -238,6 +238,12 @@ select {
   border-color: rgba(140, 174, 207, 0.28);
 }
 
+.note-pill-timestamp {
+  margin-top: 4px;
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
 .expected-notes ul {
   margin: 0;
   padding-left: 18px;
@@ -267,7 +273,8 @@ select {
 
 .analysis-status-card,
 .volume-card,
-.detected-notes-card {
+.detected-notes-card,
+.pitch-card {
   border: 1px solid rgba(140, 174, 207, 0.25);
   border-radius: var(--radius-md);
   padding: 16px;
@@ -283,6 +290,20 @@ select {
 
 .compact-header h3 {
   font-size: 1rem;
+}
+
+.pitch-readout {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.pitch-readout strong {
+  font-size: 1.35rem;
+}
+
+.pitch-readout span {
+  color: var(--muted);
 }
 
 .meter-label-row {
@@ -333,12 +354,23 @@ select {
   border: 1px solid rgba(255, 95, 122, 0.35);
 }
 
+.status-chip-muted {
+  color: #d8e8f8;
+  background: rgba(140, 174, 207, 0.16);
+  border: 1px solid rgba(140, 174, 207, 0.25);
+}
+
 .feedback-alert {
   margin-top: 16px;
   padding: 18px;
   border-radius: var(--radius-md);
   background: rgba(255, 95, 122, 0.1);
   border: 1px solid rgba(255, 95, 122, 0.28);
+}
+
+.feedback-alert-soft {
+  background: rgba(86, 184, 255, 0.1);
+  border-color: rgba(86, 184, 255, 0.25);
 }
 
 .feedback-alert h3 {
@@ -369,6 +401,41 @@ select {
   display: block;
   margin-top: 6px;
   font-size: 1.2rem;
+}
+
+.note-event-table {
+  margin-top: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.note-event-row,
+.detected-event-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(10, 18, 29, 0.76);
+  border: 1px solid rgba(140, 174, 207, 0.18);
+}
+
+.note-event-row strong,
+.detected-event-item span:first-child {
+  display: block;
+}
+
+.note-event-row span,
+.detected-event-item span:last-child {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.detected-event-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
 }
 
 .note-pill-uncertain {

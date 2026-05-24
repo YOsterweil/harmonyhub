@@ -65,6 +65,9 @@ export default function ProgressTracker({ attempts }) {
                   <span className={`status-chip ${item.noAudioDetected ? 'status-chip-off' : 'status-chip-on'}`}>
                     {item.noAudioDetected ? 'No Audio' : 'Audio Detected'}
                   </span>
+                  <span className="status-chip status-chip-muted">
+                    {item.pitchConfidenceLabel || 'Low confidence'}
+                  </span>
                 </div>
                 <div className="attempt-scores">
                   <span>P: {typeof item.pitchAccuracy === 'number' ? `${item.pitchAccuracy}%` : '—'}</span>

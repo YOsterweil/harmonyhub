@@ -2,8 +2,16 @@ function roundPercent(value) {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
-function pitchClass(value) {
-  return value ? value.replace(/-?\d+/g, '') : null;
+function formatTimestamp(milliseconds) {
+  if (!Number.isFinite(milliseconds)) {
+    return '—';
+  }
+
+  const totalSeconds = Math.max(0, milliseconds / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = Math.floor(totalSeconds % 60);
+  const tenths = Math.floor((totalSeconds - Math.floor(totalSeconds)) * 10);
+  return `${minutes}:${String(seconds).padStart(2, '0')}.${tenths}`;
 }
 
 function median(values) {
@@ -13,190 +21,230 @@ function median(values) {
 
   const sorted = [...values].sort((left, right) => left - right);
   const middle = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 0
-    ? (sorted[middle - 1] + sorted[middle]) / 2
-    : sorted[middle];
+  return sorted.length % 2 === 0 ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle];
 }
 
-function buildCoachMessage({ incorrectNotes, rhythmPattern, rhythmAssessment, noteResults }) {
-  if (!noteResults.length) {
-    return 'No clear audio detected. Please try again closer to the microphone.';
-  }
-
-  if (incorrectNotes.length === 0 && rhythmAssessment.confidence >= 0.65) {
-    return 'Excellent control. Your intonation and pulse were both very steady.';
-  }
-
-  const uniqueMisses = [...new Set(incorrectNotes)];
-  const watchList = uniqueMisses.slice(0, 2).join(' and ');
-
-  if (uniqueMisses.includes('F#')) {
-    return 'Great job on most notes. Watch your F# and keep your rhythm steady.';
-  }
-
-  if (rhythmAssessment.state === 'uncertain') {
-    return `Good effort. I could hear some notes clearly, but the rhythm timing was not consistent enough to judge confidently.`;
-  }
-
-  if (rhythmPattern === 'Mixed Rhythm') {
-    return `Great effort. Focus on ${watchList} and subdivide the beat to lock in mixed rhythms.`;
-  }
-
-  return `Great job on most notes. Watch your ${watchList} and keep your rhythm steady.`;
+function noteConfidenceLabel(label) {
+  return label || 'Low confidence';
 }
 
-function createNoteResults(exerciseNotes, detectedSegments) {
-  // Prototype scoring still aligns note names directly rather than attempting full score transcription.
+function matchExpectedNotes(expectedNotes, noteEvents) {
   const noteResults = [];
-  const usedDetectedIndexes = new Set();
-  const detectedPitchClasses = detectedSegments.map((segment) => segment.pitchClass);
+  let searchIndex = 0;
 
-  for (let expectedIndex = 0; expectedIndex < exerciseNotes.length; expectedIndex += 1) {
-    const expectedNote = exerciseNotes[expectedIndex];
+  for (const expectedNote of expectedNotes) {
     let matchedIndex = -1;
 
-    for (let detectedIndex = 0; detectedIndex < detectedSegments.length; detectedIndex += 1) {
-      if (usedDetectedIndexes.has(detectedIndex)) {
-        continue;
-      }
-
-      if (detectedSegments[detectedIndex].pitchClass === expectedNote) {
-        matchedIndex = detectedIndex;
+    for (let index = searchIndex; index < noteEvents.length; index += 1) {
+      if (noteEvents[index].pitchClass === expectedNote) {
+        matchedIndex = index;
         break;
       }
     }
 
     if (matchedIndex >= 0) {
-      usedDetectedIndexes.add(matchedIndex);
-      const matched = detectedSegments[matchedIndex];
-      const uncertainty = matched.confidence < 0.45 || matched.averageRms < 0.012;
+      searchIndex = matchedIndex + 1;
+      const matched = noteEvents[matchedIndex];
+      const confidence = roundPercent((matched.confidence ?? 0) * 100);
 
       noteResults.push({
         expectedNote,
         detectedNote: matched.pitchClass,
-        correct: !uncertainty,
-        state: uncertainty ? 'uncertain' : 'correct',
-        confidence: roundPercent(matched.confidence * 100),
-        timingMs: roundPercent(matched.durationMs)
+        correct: confidence >= 45,
+        state: confidence >= 65 ? 'correct' : 'uncertain',
+        confidence,
+        timingMs: roundPercent(matched.durationMs),
+        detectedAtMs: roundPercent(matched.startMs),
+        timestampLabel: formatTimestamp(matched.startMs)
       });
       continue;
     }
 
-    const nearestDetected = detectedPitchClasses[expectedIndex] || null;
     noteResults.push({
       expectedNote,
-      detectedNote: nearestDetected,
+      detectedNote: null,
       correct: false,
-      state: nearestDetected ? 'incorrect' : 'missing',
+      state: 'missing',
       confidence: 0,
-      timingMs: 0
+      timingMs: 0,
+      detectedAtMs: null,
+      timestampLabel: '—'
     });
   }
 
   return noteResults;
 }
 
-function scoreRhythm(rhythmPattern, detectedSegments) {
-  if (detectedSegments.length < 2) {
+function scoreRhythmFromEvents(rhythmPattern, noteEvents) {
+  if (noteEvents.length < 2) {
     return {
       score: null,
       confidence: 0,
       state: 'uncertain',
-      message: 'Not enough note changes were detected to judge rhythm clearly.'
+      message: 'Not enough stable note changes were detected to judge rhythm clearly.'
     };
   }
 
-  const intervals = detectedSegments
+  const intervals = noteEvents
     .slice(1)
-    .map((segment, index) => Math.max(0, segment.startMs - detectedSegments[index].startMs));
+    .map((event, index) => Math.max(0, event.startMs - noteEvents[index].startMs))
+    .filter((interval) => interval > 0);
 
-  const medianInterval = median(intervals);
-  const deviationScores = intervals.map((interval) => Math.abs(interval - medianInterval) / (medianInterval || 1));
-  const consistencyScore = roundPercent(100 - (deviationScores.reduce((sum, value) => sum + value, 0) / deviationScores.length) * 170);
-
-  const seconds = Math.max((detectedSegments[detectedSegments.length - 1].endMs - detectedSegments[0].startMs) / 1000, 0.5);
-  const notesPerSecond = detectedSegments.length / seconds;
-
-  const targetDensity =
-    rhythmPattern === 'Eighth Notes' ? 2.1 : rhythmPattern === 'Mixed Rhythm' ? 1.7 : 1.3;
-  const densityScore = roundPercent(100 - Math.abs(notesPerSecond - targetDensity) * 45);
-
-  let patternScore = consistencyScore;
-
-  if (rhythmPattern === 'Mixed Rhythm') {
-    const normalizedIntervals = intervals.map((interval) => interval / (medianInterval || 1));
-    const mixedTargets = normalizedIntervals.map((_, index) => (index % 4 === 1 || index % 4 === 2 ? 0.6 : 1.4));
-    const averageError = normalizedIntervals.reduce((sum, interval, index) => {
-      return sum + Math.abs(interval - mixedTargets[index]);
-    }, 0) / normalizedIntervals.length;
-
-    patternScore = roundPercent(100 - averageError * 55);
+  if (intervals.length === 0) {
+    return {
+      score: null,
+      confidence: 0,
+      state: 'uncertain',
+      message: 'Not enough stable note changes were detected to judge rhythm clearly.'
+    };
   }
 
-  const score = roundPercent((consistencyScore * 0.55 + densityScore * 0.25 + patternScore * 0.2));
-  const confidence = roundPercent(Math.min(100, 35 + detectedSegments.length * 12 + consistencyScore * 0.25));
+  const medianInterval = median(intervals);
+  const averageDeviation = intervals.reduce((sum, interval) => sum + Math.abs(interval - medianInterval), 0) / intervals.length;
+  const consistencyScore = roundPercent(100 - (averageDeviation / (medianInterval || 1)) * 150);
+
+  const elapsedSeconds = Math.max((noteEvents[noteEvents.length - 1].endMs - noteEvents[0].startMs) / 1000, 0.5);
+  const noteDensity = noteEvents.length / elapsedSeconds;
+  const targetDensity =
+    rhythmPattern === 'Eighth Notes' ? 2.2 : rhythmPattern === 'Mixed Rhythm' ? 1.6 : 1.15;
+  const densityScore = roundPercent(100 - Math.abs(noteDensity - targetDensity) * 40);
+
+  const score = roundPercent(consistencyScore * 0.62 + densityScore * 0.38);
+  const confidence = roundPercent(Math.min(100, 24 + noteEvents.length * 12 + consistencyScore * 0.2));
+
+  if (confidence < 45) {
+    return {
+      score: null,
+      confidence,
+      state: 'uncertain',
+      intervals,
+      medianInterval,
+      notesPerSecond: noteDensity,
+      message: 'The rhythm timing was present, but not stable enough for a confident score.'
+    };
+  }
 
   return {
     score,
     confidence,
-    state: confidence < 50 ? 'uncertain' : 'confident',
+    state: 'confident',
     intervals,
     medianInterval,
-    notesPerSecond,
+    notesPerSecond: noteDensity,
     message:
-      confidence < 50
-        ? 'The rhythm was present, but the timing data was not stable enough for a confident score.'
-        : rhythmPattern === 'Mixed Rhythm'
-          ? 'The rhythm timing is usable, but the long-and-short shape still needs more consistency.'
-          : 'The timing data shows a mostly steady pulse.'
+      rhythmPattern === 'Mixed Rhythm'
+        ? 'The timing was usable, but the mixed rhythm pattern still needs more consistency.'
+        : 'The timing data shows a mostly steady pulse.'
   };
 }
 
+function buildCoachMessage({ pitchAccuracy, analysis, rhythmAssessment, noteResults, pitchConfidenceLabel }) {
+  if (analysis.noAudioDetected || (!analysis.audioDetected && analysis.averageVolume < 0.012)) {
+    return 'No clear audio detected. Please try again closer to the microphone.';
+  }
+
+  if (analysis.audioDetected && (!analysis.noteEvents || analysis.noteEvents.length === 0)) {
+    return 'Audio was detected, but pitch was unclear. Try playing one note at a time closer to the microphone.';
+  }
+
+  if (pitchAccuracy < 35) {
+    return 'I heard audio, but many pitches did not match the exercise. Slow down and play one note at a time closer to the microphone.';
+  }
+
+  if (pitchAccuracy < 70) {
+    return 'Some notes matched, but several pitches were off or unstable. Focus on the expected note sequence and center each note before moving on.';
+  }
+
+  if (rhythmAssessment.state === 'uncertain') {
+    return `Your pitch estimates are ${pitchConfidenceLabel.toLowerCase()}, but the rhythm timing was not stable enough to judge confidently.`;
+  }
+
+  if (noteResults.every((item) => item.state === 'correct')) {
+    return 'Excellent control. The detected pitches matched the exercise and the timing stayed steady.';
+  }
+
+  return 'Good work. The pitch estimates were mostly consistent, and the remaining misses were small enough to keep practicing.';
+}
+
 export function generateFeedback({ exercise, rhythmPattern, analysis }) {
-  const noAudioDetected = analysis.noAudioDetected || analysis.averageVolume < 0.012 || analysis.noteSegments.length === 0;
+  const noteEvents = analysis.noteEvents ?? analysis.noteSegments ?? [];
+  const averageVolume = analysis.averageVolume ?? 0;
+  const audioDetected = Boolean(analysis.audioDetected || averageVolume >= 0.012 || noteEvents.length > 0);
+  const noAudioDetected = Boolean(analysis.noAudioDetected || (!audioDetected && averageVolume < 0.012));
+  const pitchConfidenceLabel = noteConfidenceLabel(analysis.pitchConfidenceLabel);
 
   if (noAudioDetected) {
     return {
+      estimatedPitchFeedbackLabel: 'Estimated Pitch Feedback',
       noAudioDetected: true,
       audioDetected: false,
-      averageVolume: analysis.averageVolume ?? 0,
+      averageVolume,
       maxVolume: analysis.maxVolume ?? 0,
       pitchAccuracy: null,
       rhythmAccuracy: null,
-      pitchAssessment: 'none',
+      pitchAssessment: 'low',
+      pitchConfidenceLabel: 'Low confidence',
       rhythmAssessment: { state: 'none', confidence: 0, score: null, message: 'No clear audio detected.' },
       noteResults: [],
-      detectedNotes: analysis.detectedNotes ?? [],
-      noteSegments: analysis.noteSegments ?? [],
+      detectedNotes: [],
+      noteEvents: [],
+      noteSegments: [],
       coachMessage: 'No clear audio detected. Please try again closer to the microphone.'
     };
   }
 
-  const noteResults = createNoteResults(exercise.expectedNotes, analysis.noteSegments);
+  if (audioDetected && noteEvents.length === 0) {
+    return {
+      estimatedPitchFeedbackLabel: 'Estimated Pitch Feedback',
+      noAudioDetected: false,
+      audioDetected: true,
+      averageVolume,
+      maxVolume: analysis.maxVolume ?? 0,
+      pitchAccuracy: null,
+      rhythmAccuracy: null,
+      pitchAssessment: 'low',
+      pitchConfidenceLabel,
+      rhythmAssessment: { state: 'uncertain', confidence: 0, score: null, message: 'Audio was detected, but pitch was unclear.' },
+      noteResults: [],
+      detectedNotes: analysis.detectedNotes ?? [],
+      noteEvents: [],
+      noteSegments: [],
+      coachMessage:
+        'Audio was detected, but pitch was unclear. Try playing one note at a time closer to the microphone.'
+    };
+  }
+
+  const noteResults = matchExpectedNotes(exercise.expectedNotes, noteEvents);
   const correctCount = noteResults.filter((item) => item.correct).length;
   const pitchAccuracy = roundPercent((correctCount / exercise.expectedNotes.length) * 100);
-  const uncertainNotes = noteResults.filter((item) => item.state === 'uncertain').length;
-  const pitchAssessment = uncertainNotes > 0 ? 'uncertain' : 'confident';
-
-  const rhythmAssessment = scoreRhythm(rhythmPattern, analysis.noteSegments);
+  const pitchAssessment = pitchConfidenceLabel === 'High confidence' ? 'high' : pitchConfidenceLabel === 'Medium confidence' ? 'medium' : 'low';
+  const rhythmAssessment = scoreRhythmFromEvents(rhythmPattern, noteEvents);
 
   return {
+    estimatedPitchFeedbackLabel: 'Estimated Pitch Feedback',
     noAudioDetected: false,
     audioDetected: true,
-    averageVolume: analysis.averageVolume ?? 0,
+    averageVolume,
     maxVolume: analysis.maxVolume ?? 0,
     pitchAccuracy,
     rhythmAccuracy: rhythmAssessment.score,
     pitchAssessment,
+    pitchConfidenceLabel,
     rhythmAssessment,
     noteResults,
-    detectedNotes: analysis.detectedNotes ?? analysis.noteSegments.map((segment) => segment.pitchClass),
-    noteSegments: analysis.noteSegments ?? [],
+    detectedNotes: noteEvents.map((event) => event.pitchClass).filter(Boolean),
+    noteEvents,
+    noteSegments: noteEvents,
+    livePitchFrequency: analysis.livePitchFrequency ?? null,
+    livePitchNoteName: analysis.livePitchNoteName ?? null,
+    livePitchConfidence: analysis.livePitchConfidence ?? 0,
+    pitchSource: analysis.pitchSource ?? 'fallback',
     coachMessage: buildCoachMessage({
-      incorrectNotes: noteResults.filter((item) => !item.correct).map((item) => item.expectedNote),
-      rhythmPattern,
+      pitchAccuracy,
+      analysis,
       rhythmAssessment,
-      noteResults
+      noteResults,
+      pitchConfidenceLabel
     })
   };
 }

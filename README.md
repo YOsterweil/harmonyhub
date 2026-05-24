@@ -12,7 +12,9 @@ recording an attempt, and receiving simple pitch/rhythm feedback based on live m
 - Rhythm pattern selection: Quarter Notes, Eighth Notes, Mixed Rhythm
 - Expected-note preview for each exercise
 - Microphone attempt using the browser Web Audio API
-- Live volume meter and pitch detection during recording
+- Optional ml5.js CREPE pitch detection with browser-safe fallback
+- Live volume meter, detected pitch readout, and timestamped note events during recording
+- Manual Start / Stop recording controls for full scale or excerpt performance
 - Automatic no-audio handling when the microphone is silent or unsupported
 - Feedback screen with:
   - Pitch accuracy percentage
@@ -43,3 +45,4 @@ recording an attempt, and receiving simple pitch/rhythm feedback based on live m
 - No backend is required.
 - Attempt history is stored in browser localStorage under a versioned key.
 - If microphone permissions are denied or the input is silent, HarmonyHub shows a clear no-audio state instead of fake feedback.
+- If ml5.js fails to load, the app falls back to a browser-only pitch detector so the presentation remains reliable.
