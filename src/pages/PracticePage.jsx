@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { EXERCISES, INSTRUMENT_OPTIONS, RHYTHM_PATTERNS } from '../data/exercises';
 import { generateFeedback } from '../services/feedbackService';
-import { recordPracticeAttempt } from '../services/recordingService';
+import { analyzeMicrophoneSession } from '../services/audioAnalysisService';
 import { saveAttempt } from '../services/storageService';
 
 export default function PracticePage() {
@@ -12,6 +12,12 @@ export default function PracticePage() {
   const [rhythmPattern, setRhythmPattern] = useState(RHYTHM_PATTERNS[0]);
   const [isRecording, setIsRecording] = useState(false);
   const [statusText, setStatusText] = useState('Ready to practice.');
+  const [liveVolume, setLiveVolume] = useState(0);
+  const [averageVolume, setAverageVolume] = useState(0);
+  const [audioDetected, setAudioDetected] = useState(false);
+  const [remainingSeconds, setRemainingSeconds] = useState(0);
+  const [detectedNotes, setDetectedNotes] = useState([]);
+  const [liveNote, setLiveNote] = useState(null);
 
   const selectedExercise = useMemo(
     () => EXERCISES.find((item) => item.id === exerciseId) || EXERCISES[0],
@@ -21,20 +27,36 @@ export default function PracticePage() {
   async function handleRecord() {
     setIsRecording(true);
     setStatusText('Listening through your microphone...');
+    setLiveVolume(0);
+    setAverageVolume(0);
+    setAudioDetected(false);
+    setRemainingSeconds(5);
+    setDetectedNotes([]);
+    setLiveNote(null);
 
-    const recording = await recordPracticeAttempt({ durationMs: 3000 });
+    const analysis = await analyzeMicrophoneSession({
+      durationMs: 5000,
+      onUpdate: ({ rms, averageVolume: nextAverageVolume, audioDetected: nextAudioDetected, remainingMs, detectedNotes: nextDetectedNotes, liveNote: nextLiveNote }) => {
+        setLiveVolume(rms);
+        setAverageVolume(nextAverageVolume);
+        setAudioDetected(nextAudioDetected);
+        setRemainingSeconds(Math.max(0, Math.ceil(remainingMs / 1000)));
+        setDetectedNotes(nextDetectedNotes);
+        setLiveNote(nextLiveNote);
+      }
+    });
 
-    if (recording.mode === 'demo') {
-      setStatusText('Microphone unavailable. Switched to realistic demo feedback mode.');
-    } else {
-      setStatusText('Analyzing your recorded attempt...');
-    }
+    setStatusText(
+      analysis.noAudioDetected
+        ? 'No clear audio detected. Please try again closer to the microphone.'
+        : 'Analyzing your recorded attempt...'
+    );
 
-    // Feedback generation is prototype logic that mimics beginner-level scoring behavior.
+    // This part is still prototype-level scoring, but it now uses real detected notes and timing data.
     const feedback = generateFeedback({
       exercise: selectedExercise,
       rhythmPattern,
-      recordingMode: recording.mode
+      analysis
     });
 
     const attempt = saveAttempt({
@@ -43,8 +65,17 @@ export default function PracticePage() {
       exerciseId: selectedExercise.id,
       exerciseName: selectedExercise.name,
       rhythmPattern,
-      recordingMode: recording.mode,
+      recordingMode: analysis.captureMode,
       createdAt: new Date().toISOString(),
+      countdownSeconds: 5,
+      liveVolume,
+      averageVolume: analysis.averageVolume,
+      audioDetected: feedback.audioDetected,
+      noAudioDetected: feedback.noAudioDetected,
+      detectedNotes: feedback.detectedNotes,
+      noteSegments: feedback.noteSegments,
+      pitchAssessment: feedback.pitchAssessment,
+      rhythmAssessment: feedback.rhythmAssessment,
       ...feedback
     });
 
@@ -110,11 +141,51 @@ export default function PracticePage() {
         </ul>
       </div>
 
-      <div className="recording-bar">
-        <button type="button" className="btn-primary" disabled={isRecording} onClick={handleRecord}>
-          {isRecording ? 'Recording...' : 'Start Recording'}
-        </button>
-        <span>{statusText}</span>
+      <div className="recording-panel">
+        <div className="recording-bar">
+          <button type="button" className="btn-primary" disabled={isRecording} onClick={handleRecord}>
+            {isRecording ? 'Recording...' : 'Start Recording'}
+          </button>
+          <span>{statusText}</span>
+        </div>
+
+        <div className="live-analysis-grid">
+          <div className="analysis-status-card">
+            <span className={`status-chip ${audioDetected ? 'status-chip-on' : 'status-chip-off'}`}>
+              {audioDetected ? 'Audio Detected' : 'No Audio Detected'}
+            </span>
+            <p>{isRecording ? `Recording ends in ${remainingSeconds}s` : 'Live meter will appear while recording.'}</p>
+          </div>
+
+          <div className="volume-card">
+            <div className="meter-label-row">
+              <span>Volume</span>
+              <span>{Math.round(liveVolume * 100)}%</span>
+            </div>
+            <div className="meter-track">
+              <div className="meter-fill" style={{ width: `${Math.max(6, Math.round(liveVolume * 600))}%` }} />
+            </div>
+            <p>Average volume: {Math.round(averageVolume * 100)}%</p>
+          </div>
+
+          <div className="detected-notes-card">
+            <div className="section-header compact-header">
+              <h3>Detected Notes</h3>
+              <p>{liveNote ? `Listening for ${liveNote}` : 'Waiting for a clear pitch'}</p>
+            </div>
+            <div className="chip-row">
+              {detectedNotes.length > 0 ? (
+                detectedNotes.map((note, index) => (
+                  <span key={`${note}-${index}`} className="note-chip note-chip-live">
+                    {note}
+                  </span>
+                ))
+              ) : (
+                <span className="muted-text">No note detected yet.</span>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   );

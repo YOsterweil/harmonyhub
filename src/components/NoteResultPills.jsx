@@ -3,11 +3,19 @@ export default function NoteResultPills({ noteResults }) {
     <div className="note-pill-grid">
       {noteResults.map((result, index) => (
         <div
-          key={`${result.note}-${index}`}
-          className={`note-pill ${result.correct ? 'note-pill-correct' : 'note-pill-wrong'}`}
+          key={`${result.expectedNote || result.note}-${index}`}
+          className={`note-pill ${result.state === 'correct' ? 'note-pill-correct' : result.state === 'uncertain' ? 'note-pill-uncertain' : 'note-pill-wrong'}`}
         >
-          <div className="note-pill-label">{result.note}</div>
-          <div className="note-pill-status">{result.correct ? 'Correct' : 'Needs Work'}</div>
+          <div className="note-pill-label">{result.expectedNote || result.note}</div>
+          <div className="note-pill-status">
+            {result.state === 'correct'
+              ? `Correct${result.detectedNote ? ` - ${result.detectedNote}` : ''}`
+              : result.state === 'uncertain'
+                ? 'Unclear'
+                : result.state === 'missing'
+                  ? 'Missing'
+                  : 'Incorrect'}
+          </div>
         </div>
       ))}
     </div>

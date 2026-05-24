@@ -7,7 +7,15 @@ function buildTrendPoints(attempts) {
   }
 
   const reversed = [...attempts].reverse();
-  const values = reversed.map((item) => Math.round((item.pitchAccuracy + item.rhythmAccuracy) / 2));
+  const values = reversed.map((item) => {
+    if (item.noAudioDetected) {
+      return 0;
+    }
+
+    const pitch = typeof item.pitchAccuracy === 'number' ? item.pitchAccuracy : 0;
+    const rhythm = typeof item.rhythmAccuracy === 'number' ? item.rhythmAccuracy : pitch;
+    return Math.round((pitch + rhythm) / 2);
+  });
 
   return values
     .map((value, index) => {
@@ -54,10 +62,13 @@ export default function ProgressTracker({ attempts }) {
                 <div>
                   <h4>{item.exerciseName}</h4>
                   <p>{item.rhythmPattern}</p>
+                  <span className={`status-chip ${item.noAudioDetected ? 'status-chip-off' : 'status-chip-on'}`}>
+                    {item.noAudioDetected ? 'No Audio' : 'Audio Detected'}
+                  </span>
                 </div>
                 <div className="attempt-scores">
-                  <span>P: {item.pitchAccuracy}%</span>
-                  <span>R: {item.rhythmAccuracy}%</span>
+                  <span>P: {typeof item.pitchAccuracy === 'number' ? `${item.pitchAccuracy}%` : '—'}</span>
+                  <span>R: {typeof item.rhythmAccuracy === 'number' ? `${item.rhythmAccuracy}%` : '—'}</span>
                 </div>
               </article>
             ))}
