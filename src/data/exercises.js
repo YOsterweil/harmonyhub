@@ -2,6 +2,34 @@ export const INSTRUMENT_OPTIONS = ['Violin'];
 
 export const RHYTHM_PATTERNS = ['Quarter Notes', 'Eighth Notes', 'Mixed Rhythm'];
 
+export const STEP_PRACTICE_PRESETS = [
+  {
+    id: 'step-g-major-scale',
+    name: 'G Major Scale',
+    notes: ['G', 'A', 'B', 'C', 'D', 'E', 'F#', 'G']
+  },
+  {
+    id: 'step-d-major-scale',
+    name: 'D Major Scale',
+    notes: ['D', 'E', 'F#', 'G', 'A', 'B', 'C#', 'D']
+  },
+  {
+    id: 'step-open-strings',
+    name: 'Open Strings',
+    notes: ['G', 'D', 'A', 'E']
+  },
+  {
+    id: 'step-twinkle-excerpt',
+    name: 'Twinkle Twinkle Excerpt',
+    notes: ['A', 'A', 'E', 'E', 'F#', 'F#', 'E']
+  },
+  {
+    id: 'step-first-finger-drill',
+    name: 'First Finger Drill',
+    notes: ['A', 'B', 'A', 'B', 'D', 'E', 'D', 'E']
+  }
+];
+
 export const EXERCISES = [
   {
     id: 'g-major-scale-qn',
