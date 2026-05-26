@@ -452,6 +452,11 @@ input[type='text'] {
   border-color: rgba(140, 174, 207, 0.35);
 }
 
+.note-pill-retry {
+  background: rgba(255, 203, 78, 0.14);
+  border-color: rgba(255, 203, 78, 0.45);
+}
+
 .metric-card p {
   margin: 8px 0 0;
   color: var(--muted);

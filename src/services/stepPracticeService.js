@@ -237,6 +237,8 @@ export function buildStepSummary(results) {
   const correctCount = results.filter((item) => item.status === 'correct').length;
   const skippedCount = results.filter((item) => item.status === 'skipped').length;
   const accuracy = results.length > 0 ? roundPercent((correctCount / results.length) * 100) : 0;
+  const completion = results.length > 0 ? roundPercent((completedCount / results.length) * 100) : 0;
+  const firstTryAccuracy = results.length > 0 ? roundPercent((correctWithoutRetry / results.length) * 100) : 0;
   const retryNotes = results
     .filter((item) => (item.retries ?? 0) > 0)
     .map((item) => ({
@@ -264,6 +266,8 @@ export function buildStepSummary(results) {
     correctWithoutRetry,
     notesNeedingRetries,
     accuracy,
+    completion,
+    firstTryAccuracy,
     retryNotes,
     skippedCount,
     encouragement

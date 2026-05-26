@@ -824,8 +824,12 @@ export default function PracticePage() {
                 <strong>{stepSummary.notesNeedingRetries}</strong>
               </div>
               <div>
-                <span>Accuracy</span>
-                <strong>{stepSummary.accuracy}%</strong>
+                <span>Completion</span>
+                <strong>{stepSummary.completion}%</strong>
+              </div>
+              <div>
+                <span>First-Try Accuracy</span>
+                <strong>{stepSummary.firstTryAccuracy}%</strong>
               </div>
             </div>
             {stepSummary.retryNotes.length > 0 ? (
