@@ -21,13 +21,13 @@ export default function App() {
       <header className="top-nav">
         <div className="brand-block">
           <h1>HarmonyHub</h1>
-          <p>Capstone Prototype</p>
+          <p>Music Practice Assistant</p>
         </div>
 
         <nav>
           <AppNavLink to="/">Home</AppNavLink>
           <AppNavLink to="/practice">Practice</AppNavLink>
-          <AppNavLink to="/feedback">Feedback</AppNavLink>
+          <AppNavLink to="/feedback">Progress</AppNavLink>
           <AppNavLink to="/about">About</AppNavLink>
         </nav>
       </header>

@@ -667,12 +667,13 @@ export default function PracticePage() {
   return (
     <section className="page-wrap practice-page fade-in">
       <section className="panel-card practice-hero-card">
-        <div className="section-header">
+          <div className="section-header">
           <span className="hero-badge">Primary feature</span>
           <h2>Step-by-Step Practice</h2>
           <p>
-            The app listens one note at a time, waits for a steady in-tune pitch, then moves forward.
-            Full attempt grading remains available below as an experimental mode.
+            The app listens one note at a time, waits for a steady in-tune pitch, and advances only
+            when the student produces a stable, in-tolerance pitch; Full Attempt grading remains
+            available below as an experimental mode.
           </p>
         </div>
 
@@ -738,7 +739,7 @@ export default function PracticePage() {
           </button>
         </div>
 
-        <p className="practice-disclaimer">Pitch detection is estimated and may be affected by tuning, bow noise, room noise, and microphone quality.</p>
+        <p className="practice-disclaimer">Pitch detection is estimated and may be affected by tuning, instrument tone, room noise, and microphone quality.</p>
 
         <div className="step-target-card">
           <div className="step-target-copy">

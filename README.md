@@ -1,9 +1,10 @@
 # HarmonyHub
 
-HarmonyHub is a polished React + Vite capstone prototype for community-focused music education.
+HarmonyHub is a focused React + Vite prototype that provides teacher-like, step-by-step pitch
+practice for beginner musicians.
 
-It helps beginner violin students practice independently between lessons by selecting an exercise,
-recording an attempt, and receiving simple pitch/rhythm feedback based on live microphone analysis.
+It helps students practice one note at a time, receive immediate, actionable feedback, and track
+progress between lessons using live microphone pitch analysis.
 
 ## Features
 

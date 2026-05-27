@@ -6,22 +6,22 @@ export default function AboutPage() {
       </div>
 
       <p>
-        HarmonyHub is designed to support beginner music students, especially students who may not have
-        access to frequent private lessons. The app gives immediate, approachable feedback between lessons
-        so students can build confidence and better practice habits.
+        HarmonyHub supports beginner music students who may have limited access to private lessons.
+        The app gives immediate, teacher-like feedback during practice so students can build reliable
+        technique and independent practice habits.
       </p>
 
       <p>
-        This capstone prototype focuses on violin fundamentals and practical independence. By turning
-        practice into a guided cycle of attempt, feedback, and reflection, HarmonyHub can help students stay
-        motivated and improve more consistently.
+        This capstone prototype focuses on practical fundamentals and guided, repeatable practice.
+        By structuring practice as a cycle of attempt, targeted feedback, and reflection, HarmonyHub
+        helps students make measurable progress between lessons.
       </p>
 
       <div className="roadmap-card">
         <h3>Version 2.0 Roadmap</h3>
         <p>
-          A future version would allow teachers or students to upload sheet music and create custom
-          assignments. That would make HarmonyHub adaptable for classrooms, studios, and individual goals.
+          A future version would let teachers create custom assignments and upload sheet music, making
+          HarmonyHub adaptable for classrooms, studios, and individual goals.
         </p>
       </div>
     </section>
