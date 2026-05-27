@@ -52,7 +52,9 @@ function SessionCard({ s }) {
       {s.summary?.retryNotes?.length ? (
         <div className="retry-notes">
           {s.summary.retryNotes.map((r, i) => (
-            <span key={`${r.note}-${i}`} className="note-chip note-chip-muted">{r.note} · {r.retries}</span>
+            <span key={`${r.note}-${i}`} className="note-chip note-chip-muted">
+              {r.note}: {r.retries} {r.retries === 1 ? 'retry' : 'retries'}
+            </span>
           ))}
         </div>
       ) : null}
@@ -67,11 +69,9 @@ function SessionCard({ s }) {
 export default function FeedbackPage() {
   const allSessions = listStepPracticeSummaries() || [];
 
-  // Filter out sessions with zero completed notes from main list
   const sorted = allSessions.slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   const completed = sorted.filter((s) => (s.summary?.completedCount ?? 0) > 0 && (s.summary?.completion ?? 0) >= 100);
   const incomplete = sorted.filter((s) => (s.summary?.completedCount ?? 0) > 0 && (s.summary?.completion ?? 0) < 100);
-  const abandoned = sorted.filter((s) => (s.summary?.completedCount ?? 0) === 0);
 
   if (!sorted.length) {
     return (
@@ -117,7 +117,7 @@ export default function FeedbackPage() {
 
         {incomplete.length > 0 && (
           <div className="incomplete-section">
-            <h4>Incomplete Sessions</h4>
+            <h4>Partially Completed Sessions</h4>
             <div className="sessions-list">
               {incomplete.map((s) => (
                 <SessionCard key={s.id} s={s} />
@@ -125,13 +125,6 @@ export default function FeedbackPage() {
             </div>
           </div>
         )}
-
-        {abandoned.length > 0 ? (
-          <div className="incomplete-section abandoned">
-            <h4>Abandoned Sessions</h4>
-            <p className="muted-text">There are sessions with no completed notes; they are hidden from the main list.</p>
-          </div>
-        ) : null}
       </div>
 
       <div className="section-footer">
