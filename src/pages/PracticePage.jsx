@@ -18,7 +18,7 @@ import {
   parsePracticeSequence,
   updateStreakFromSample
 } from '../services/stepPracticeService';
-import { saveAttempt } from '../services/storageService';
+import { saveAttempt, saveStepPracticeSummary } from '../services/storageService';
 
 const DEFAULT_STEP_SEQUENCE_TEXT = STEP_PRACTICE_PRESETS[0].notes.join(' ');
 const STEP_FEEDBACK_HOLD_MS = 900;
@@ -352,6 +352,31 @@ export default function PracticePage() {
     setIsRecording(false);
     setIsStartingRecording(false);
     setActiveMode(null);
+
+    // Persist step-by-step summary when a step sequence completes or stops.
+    try {
+      if (reason && reason.startsWith('step')) {
+        const current = stepPracticeRef.current;
+        const summary = current?.summary || (current?.results ? buildStepSummary(current.results) : null);
+        if (summary) {
+          const sequenceTokens = stepSequenceRef.current?.tokens ?? [];
+          const sessionRecord = {
+            id: crypto.randomUUID(),
+            createdAt: new Date().toISOString(),
+            sequence: sequenceTokens.map((t) => t.display),
+            summary
+          };
+          try {
+            saveStepPracticeSummary(sessionRecord);
+          } catch (e) {
+            // ignore storage errors
+          }
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+
     return analysis;
   }
 

@@ -1,132 +1,142 @@
-import { Link, useLocation } from 'react-router-dom';
-import NoteResultPills from '../components/NoteResultPills';
-import ProgressTracker from '../components/ProgressTracker';
-import { getAttempts, getLatestAttempt } from '../services/storageService';
+import { Link } from 'react-router-dom';
+import { listStepPracticeSummaries } from '../services/storageService';
+
+function renderDate(iso) {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString();
+  } catch {
+    return iso;
+  }
+}
+
+function mostRetriedNotes(summaries) {
+  const counts = {};
+  summaries.forEach((s) => {
+    (s.summary?.retryNotes || []).forEach((r) => {
+      counts[r.note] = (counts[r.note] || 0) + (r.retries || 0);
+    });
+  });
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  return entries.map((e) => e[0]).slice(0, 3);
+}
+
+function SessionCard({ s }) {
+  const completion = s.summary?.completion ?? 0;
+  return (
+    <article className="session-card">
+      <div className="session-header">
+        <div className="session-title">{s.sequence.join(' ')}</div>
+        <div className="session-time muted-text">{renderDate(s.createdAt)}</div>
+      </div>
+
+      <div className="session-body stats-grid">
+        <div className="stat-box">
+          <span className="stat-label">Notes completed</span>
+          <strong className="stat-value">{s.summary?.completedCount ?? 0}</strong>
+        </div>
+        <div className="stat-box">
+          <span className="stat-label">Completion</span>
+          <strong className="stat-value">{completion}%</strong>
+        </div>
+        <div className="stat-box">
+          <span className="stat-label">First-Try Accuracy</span>
+          <strong className="stat-value">{s.summary?.firstTryAccuracy ?? 0}%</strong>
+        </div>
+        <div className="stat-box">
+          <span className="stat-label">Notes needing retries</span>
+          <strong className="stat-value">{s.summary?.notesNeedingRetries ?? 0}</strong>
+        </div>
+      </div>
+
+      {s.summary?.retryNotes?.length ? (
+        <div className="retry-notes">
+          {s.summary.retryNotes.map((r, i) => (
+            <span key={`${r.note}-${i}`} className="note-chip note-chip-muted">{r.note} · {r.retries}</span>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="session-chart">
+        <div className="chart-bar" style={{ width: `${completion}%` }} />
+      </div>
+    </article>
+  );
+}
 
 export default function FeedbackPage() {
-  const location = useLocation();
-  const attempt = location.state?.attempt || getLatestAttempt();
-  const attempts = getAttempts();
+  const allSessions = listStepPracticeSummaries() || [];
 
-  if (!attempt) {
+  // Filter out sessions with zero completed notes from main list
+  const sorted = allSessions.slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const completed = sorted.filter((s) => (s.summary?.completedCount ?? 0) > 0 && (s.summary?.completion ?? 0) >= 100);
+  const incomplete = sorted.filter((s) => (s.summary?.completedCount ?? 0) > 0 && (s.summary?.completion ?? 0) < 100);
+  const abandoned = sorted.filter((s) => (s.summary?.completedCount ?? 0) === 0);
+
+  if (!sorted.length) {
     return (
       <section className="panel-card fade-in">
-        <h2>No feedback available yet</h2>
-        <p>Complete a practice attempt first to see your results.</p>
-        <Link to="/practice" className="btn-primary">
-          Start Practice
-        </Link>
+        <h2>Practice Progress</h2>
+        <p>Review your recent step-by-step practice sessions.</p>
+        <div className="empty-state">
+          <p>No step-by-step sessions yet. Complete a practice sequence to see your progress here.</p>
+          <Link to="/practice" className="btn-primary">Start Practice</Link>
+        </div>
       </section>
     );
   }
 
+  const focus = mostRetriedNotes(sorted);
+
   return (
-    <section className="feedback-layout fade-in">
-      <div className="panel-card">
-        <div className="section-header">
-          <h2>{attempt.estimatedPitchFeedbackLabel || 'Estimated Pitch Feedback'}</h2>
-          <p>
-            {attempt.exerciseName} • {attempt.rhythmPattern} • {attempt.noAudioDetected ? 'No Clear Audio' : 'Mic Mode'}
-          </p>
-        </div>
-
-        {attempt.noAudioDetected ? (
-          <div className="feedback-alert">
-            <h3>No clear audio detected</h3>
-            <p>Please try again closer to the microphone.</p>
-            <div className="analysis-summary-grid">
-              <div>
-                <span>Average Volume</span>
-                <strong>{Math.round((attempt.averageVolume || 0) * 100)}%</strong>
-              </div>
-              <div>
-                <span>Status</span>
-                <strong>{attempt.audioDetected ? 'Audio Seen' : 'No Audio'}</strong>
-              </div>
-            </div>
-            <div className="chip-row">
-              {attempt.detectedNotes?.length ? (
-                attempt.detectedNotes.map((note, index) => (
-                  <span key={`${note}-${index}`} className="note-chip note-chip-muted">
-                    {note}
-                  </span>
-                ))
-              ) : (
-                <span className="muted-text">No usable notes were detected.</span>
-              )}
-            </div>
-          </div>
-        ) : null}
-
-        {!attempt.noAudioDetected && attempt.audioDetected && (!attempt.noteResults || attempt.noteResults.length === 0) ? (
-          <div className="feedback-alert feedback-alert-soft">
-            <h3>Audio was detected, but pitch was unclear</h3>
-            <p>Try playing one note at a time closer to the microphone.</p>
-          </div>
-        ) : null}
-
-        {!attempt.noAudioDetected ? (
-          <div className="metric-grid">
-            <article className="metric-card">
-              <h3>Pitch Accuracy</h3>
-              <strong>{attempt.pitchAccuracy ?? '—'}{attempt.pitchAccuracy !== null ? '%' : ''}</strong>
-              <p>
-                {attempt.pitchConfidenceLabel || 'Low confidence'}
-                {attempt.pitchAssessment === 'low'
-                  ? ' - The pitch estimate was uncertain and should be treated carefully.'
-                  : ' - Based on detected note matches.'}
-              </p>
-            </article>
-            <article className="metric-card">
-              <h3>Rhythm Accuracy</h3>
-              <strong>{attempt.rhythmAccuracy ?? '—'}{attempt.rhythmAccuracy !== null ? '%' : ''}</strong>
-              <p>{attempt.rhythmAssessment?.message || 'Rhythm was not confident enough to score.'}</p>
-            </article>
-          </div>
-        ) : null}
-
-        {!attempt.noAudioDetected ? (
-          <div className="feedback-copy">
-            <h3>Note-by-Note Results</h3>
-            <NoteResultPills noteResults={attempt.noteResults} />
-            <p>{attempt.coachMessage}</p>
-            <div className="analysis-summary-grid">
-              <div>
-                <span>Average Volume</span>
-                <strong>{Math.round((attempt.averageVolume || 0) * 100)}%</strong>
-              </div>
-              <div>
-                <span>Pitch Confidence</span>
-                <strong>{attempt.pitchConfidenceLabel || 'Low confidence'}</strong>
-              </div>
-            </div>
-            <div className="note-event-table">
-              {attempt.noteEvents?.length ? (
-                attempt.noteEvents.map((event, index) => (
-                  <article key={`${event.pitchClass || event.noteName}-${index}`} className="note-event-row">
-                    <div>
-                      <strong>{event.pitchClass || event.noteName}</strong>
-                      <span>{event.timestampLabel || '—'}</span>
-                    </div>
-                    <div>
-                      <span>{Math.round(event.frequency || 0)} Hz</span>
-                      <span>{Math.round(event.durationMs || 0)} ms</span>
-                    </div>
-                  </article>
-                ))
-              ) : (
-                <span className="muted-text">No final pitch segments were stored.</span>
-              )}
-            </div>
-          </div>
-        ) : null}
-
-        <Link to="/practice" className="btn-secondary">
-          Try Another Attempt
-        </Link>
+    <section className="panel-card fade-in progress-page">
+      <div className="section-header">
+        <h2>Practice Progress</h2>
+        <p>Review your recent step-by-step practice sessions.</p>
       </div>
 
-      <ProgressTracker attempts={attempts} />
+      <div className="progress-overview">
+        <div className="focus-card">
+          <h3>Focus Notes</h3>
+          {focus.length > 0 ? (
+            <p>Your most retried notes were {focus.join(', ')}. Try practicing those slowly before repeating the full sequence.</p>
+          ) : (
+            <p>Nice work — no frequently retried notes yet.</p>
+          )}
+        </div>
+
+        <h3 className="recent-header">Recent Step-by-Step Sessions</h3>
+
+        <div className="sessions-list">
+          {completed.length > 0 ? (
+            completed.map((s) => <SessionCard key={s.id} s={s} />)
+          ) : (
+            <p className="muted-text">No fully completed sessions yet.</p>
+          )}
+        </div>
+
+        {incomplete.length > 0 && (
+          <div className="incomplete-section">
+            <h4>Incomplete Sessions</h4>
+            <div className="sessions-list">
+              {incomplete.map((s) => (
+                <SessionCard key={s.id} s={s} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {abandoned.length > 0 ? (
+          <div className="incomplete-section abandoned">
+            <h4>Abandoned Sessions</h4>
+            <p className="muted-text">There are sessions with no completed notes; they are hidden from the main list.</p>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="section-footer">
+        <Link to="/practice" className="btn-primary">Start New Practice Session</Link>
+      </div>
     </section>
   );
 }

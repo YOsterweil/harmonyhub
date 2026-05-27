@@ -1,5 +1,7 @@
 const STORAGE_KEY = 'harmonyhub.attempts.v1';
 const MAX_ATTEMPTS = 20;
+const STORAGE_KEY_STEP = 'harmonyhub.stepSummaries.v1';
+const MAX_STEP_SUMMARIES = 50;
 
 function safeParseAttempts(rawValue) {
   if (!rawValue) {
@@ -30,4 +32,25 @@ export function saveAttempt(attempt) {
 export function getLatestAttempt() {
   const attempts = getAttempts();
   return attempts[0] ?? null;
+}
+
+export function listStepPracticeSummaries() {
+  const raw = window.localStorage.getItem(STORAGE_KEY_STEP);
+  try {
+    const parsed = JSON.parse(raw || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveStepPracticeSummary(summary) {
+  if (!summary || typeof window === 'undefined') {
+    return null;
+  }
+
+  const existing = listStepPracticeSummaries();
+  const next = [summary, ...existing].slice(0, MAX_STEP_SUMMARIES);
+  window.localStorage.setItem(STORAGE_KEY_STEP, JSON.stringify(next));
+  return summary;
 }

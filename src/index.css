@@ -962,6 +962,113 @@ input[type='text'] {
   font-size: 0.87rem;
 }
 
+/* Progress page styles */
+.progress-page .progress-overview {
+  display: grid;
+  gap: 18px;
+}
+
+.focus-card {
+  border: 1px solid rgba(140,174,207,0.16);
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(10,18,29,0.8);
+}
+
+.recent-header {
+  margin: 8px 0 0;
+  color: #d8ebff;
+}
+
+.sessions-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.session-card {
+  border: 1px solid rgba(140,174,207,0.12);
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(8,15,22,0.72);
+}
+
+.session-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  margin-bottom: 10px;
+}
+
+.session-title {
+  font-weight: 700;
+}
+
+.session-time {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.stat-box {
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(11,20,30,0.7);
+  border: 1px solid rgba(140,174,207,0.08);
+}
+
+.stat-label {
+  display: block;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.stat-value {
+  display: block;
+  margin-top: 6px;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.retry-notes {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.session-chart {
+  margin-top: 12px;
+  height: 10px;
+  background: rgba(140,174,207,0.08);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.chart-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #42d392, #5bc9ff);
+  transition: width 220ms ease;
+}
+
+.incomplete-section {
+  margin-top: 14px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(140,174,207,0.06);
+}
+
+.empty-state {
+  display: grid;
+  gap: 12px;
+  align-items: center;
+}
+
 .roadmap-card {
   margin-top: 18px;
   padding: 18px;
